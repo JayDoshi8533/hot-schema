@@ -1,3 +1,15 @@
+
+(function(Handsontable){
+  function fakeValidator(query, callback) {
+    //Always returns true.  Use this to make sure afterValidate fires.
+    callback(true);//callback(/* Pass `true` or `false` based on your logic */);
+  }
+
+  // Register an alias
+  Handsontable.validators.registerValidator('fake.validator', fakeValidator);
+
+})(Handsontable);
+
 function getCols(schema,path){
   // TODO: pull out the specific path
   return schema;
@@ -5,11 +17,14 @@ function getCols(schema,path){
 function getColDef(id,definition){
   switch (definition.type) {
     case 'string':
-      return {data:id,type:'text'};
+      if (definition.enum)
+        return {data:id,type:'dropdown',source:definition.enum};
+      else
+        return {data:id,type:'text',validator:'fake.validator'};
     case 'number':
       return {data:id,type:'numeric'};
     case 'boolean':
-      return {data:id,type:'checkbox'};
+      return {data:id,type:'checkbox',allowInvalid:false};
     case 'array':
       var def = {data:id,type:'dropdown'};
       if (definition.items && definition.items.enum)

@@ -1,30 +1,35 @@
 
 <script src="https://docs.handsontable.com/4.0.0/components/handsontable/dist/handsontable.full.js"></script>
 <link type="text/css" rel="stylesheet" href="https://docs.handsontable.com/4.0.0/components/handsontable/dist/handsontable.full.min.css">
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/6.5.2/ajv.bundle.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/4.1.7/ajv.bundle.js"></script>
 <script src="hotschema.js"></script>
 <script src="example_schema.js"></script>
 <div id="example1" class="hot handsontable htRowHeaders htColumnHeaders"></div>
-
+<button onClick="addRow()">Add row</button><button onClick="logData()">Show data</button>
 
 <script>
-function getData() {
-  return [
-    ['', 'Tesla', 'Nissan', 'Toyota', 'Honda', 'Mazda', 'Ford'],
-    ['2017', 10, 11, 12, 13, 15, 16],
-    ['2018', 10, 11, 12, 13, 15, 16],
-    ['2019', 10, 11, 12, 13, 15, 16],
-    ['2020', 10, 11, 12, 13, 15, 16],
-    ['2021', 10, 11, 12, 13, 15, 16]
-  ];
-}
+
 var container1 = document.getElementById('example1'),
     hot1;
 
 
-console.log('schema',example_schemas.veggies);
-var coldefs = schema2HotCols(example_schemas.veggies.definitions.veggie);
-var colHeaders = schema2HotHeaders(example_schemas.veggies.definitions.veggie);
+console.log('schema',example_schemas.veggie);
+var coldefs = schema2HotCols(example_schemas.veggie);
+var colHeaders = schema2HotHeaders(example_schemas.veggie);
 console.log('coldefs',coldefs);
+
+var ajv = new Ajv({allErrors: true}); // options can be passed, e.g. {allErrors: true}
+var validate = ajv.compile(example_schemas.veggie);
+test({score: "sdfsdf"});
+function test(data) {
+  var valid = validate(data);
+  if (valid) console.log('Valid!');
+  else{
+  	console.log('Invalid: ' + ajv.errorsText(validate.errors));
+    console.log(validate.errors);
+  }
+}
 
 
 hot1 = new Handsontable(container1, {
@@ -33,5 +38,26 @@ hot1 = new Handsontable(container1, {
   rowHeaders: true,
   colHeaders: colHeaders,
   contextMenu: ['copy', 'cut'],
+  manualColumnResize: true,
+  afterValidate: function(isValid, value, row, prop, source) {
+	//This is necessary because it passes in some context, unlike the custom validators which only give the value.
+    console.log(isValid,value,row,prop,source,this.propToCol(prop))
+    return isValid;
+  }
 });
+function logData(){
+  var data = hot1.getSourceData();
+  console.log(data);
+  for (var i in data){
+      console.log('validate',data[i]);
+      test(data[i]);
+  }
+
+}
+function addRow(){
+  hot1.alter('insert_row');
+}
+function removeSelected(){
+  hot1.getSelected()
+}
 </script>

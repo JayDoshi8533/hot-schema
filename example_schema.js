@@ -5,12 +5,6 @@ example_schemas.veggies = {
   "description": "Veggies",
   "type": "object",
   "properties": {
-    "fruits": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "vegetables": {
       "type": "array",
       "items": { "$ref": "#/definitions/veggie" }
@@ -28,8 +22,46 @@ example_schemas.veggies = {
         "veggieLike": {
           "type": "boolean",
           "description": "Do I like this vegetable?"
+        },
+        "score": {
+          "type": "number",
+          "description": "Rate from 1-10",
+          "minimum": 0,
+          "maximum": 100,
+        },
+        "color":{
+          "type":"array",
+          "items":{
+            "enum":["green","red","yellow","other"]
+          }
         }
       }
+    }
+  }
+}
+
+example_schemas.veggie = {
+  "description": "Veggie",
+  "type": "object",
+  "required": [ "veggieName", "veggieLike" ],
+  "properties": {
+    "veggieName": {
+      "type": "string",
+      "description": "The name of the vegetable."
+    },
+    "veggieLike": {
+      "type": "boolean",
+      "description": "Do I like this vegetable?"
+    },
+    "score": {
+      "type": "number",
+      "description": "Rate from 1-10",
+      "minimum": 0,
+      "maximum": 100,
+    },
+    "color":{
+      "type":"string",
+      "enum":["green","red","yellow","other"]
     }
   }
 }
