@@ -18,15 +18,15 @@ function getColDef(id,definition){
   switch (definition.type) {
     case 'string':
       if (definition.enum)
-        return {data:id,type:'dropdown',source:definition.enum};
+        return {data:id,type:'dropdown',source:definition.enum,validator:'fake.validator'};
       else
         return {data:id,type:'text',validator:'fake.validator'};
     case 'number':
-      return {data:id,type:'numeric'};
+      return {data:id,type:'numeric',validator:'fake.validator'};
     case 'boolean':
-      return {data:id,type:'checkbox',allowInvalid:false};
+      return {data:id,type:'checkbox',allowInvalid:false,validator:'fake.validator'};
     case 'array':
-      var def = {data:id,type:'dropdown'};
+      var def = {data:id,type:'dropdown',validator:'fake.validator'};
       if (definition.items && definition.items.enum)
         def.source = definition.items.enum;
       return def;
@@ -35,6 +35,14 @@ function getColDef(id,definition){
       throw 'Unsupported type ' + definition.type;
   }
 }
+// function getValidators(schema){
+//   var validators = {};
+//   Object.getOwnPropertyNames(schema.properties).forEach(
+//     function (prop, idx, array) {
+//       console.log(prop + ' -> ' + schema.properties[prop]);
+//       columnDefs.push(getColDef(prop,schema.properties[prop]))
+//     }
+// }
 function schema2HotCols(schema){
   var columnDefs = [];
   // TODO: translate schema into column definitions
