@@ -43,17 +43,32 @@ hot1 = new Handsontable(container1, {
   manualColumnResize: true,
   afterValidate: function(isValid, value, row, prop, source) {
 	//This is necessary because it passes in some context, unlike the custom validators which only give the value.
-    console.log('afterValidate',isValid,value,row,prop,source,this.propToCol(prop))
+    console.log('afterValidate',isValid,value,row,prop,source,this.propToCol(prop));
     var rowData = hot1.getSourceDataAtRow(row);
-
+    rowData[prop] = value;
+    console.log('row data',JSON.stringify(rowData));
     var valid = validate(rowData);
+    var message = "Bad value."
     if (valid) console.log('Valid!');
     else{
-      console.log(rowData,validate.errors);
-      console.log('Invalid: ' + ajv.errorsText(validate.errors));
-      commentsPlugin.setCommentAtCell(row, this.propToCol(prop), 'BAD VALUE');
+      valid = true;
+      for(var i in validate.errors){
+        if (validate.errors[i].dataPath == '.'+prop){
+          valid = false;
+          message = validate.errors[i].message;
+        }
+
+      }
+      if (!valid){
+        console.log(JSON.stringify(validate.errors));
+        console.log('Invalid: ' + ajv.errorsText(validate.errors));
+        commentsPlugin.setCommentAtCell(row, this.propToCol(prop), message);
+      }
+      else {
+        commentsPlugin.removeCommentAtCell(row, this.propToCol(prop), message);
+      }
     }
-    return isValid;
+    return valid && isValid;
   }
 });
 commentsPlugin = hot1.getPlugin('comments');
