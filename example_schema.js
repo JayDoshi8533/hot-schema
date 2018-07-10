@@ -47,7 +47,8 @@ example_schemas.veggie = {
   "properties": {
     "veggieName": {
       "type": "string",
-      "description": "The name of the vegetable."
+      "description": "The name of the vegetable.",
+      "minLength":3
     },
     "veggieLike": {
       "type": "boolean",
