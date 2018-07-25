@@ -1,14 +1,5 @@
-
-(function(Handsontable){
-  function fakeValidator(query, callback) {
-    //Always returns true.  Use this to make sure afterValidate fires.
-    callback(true);//callback(/* Pass `true` or `false` based on your logic */);
-  }
-
-  // Register an alias
-  Handsontable.validators.registerValidator('fake.validator', fakeValidator);
-
-})(Handsontable);
+import Handsontable from 'handsontable';
+import Ajv from 'ajv'
 
 function getCols(schema,path){
   // TODO: pull out the specific path
@@ -31,7 +22,7 @@ function getColDef(id,definition){
         def.source = definition.items.enum;
       return def;
     default:
-      console.log(id,definition);
+      // console.log(id,definition);
       throw 'Unsupported type ' + definition.type;
   }
 }
@@ -45,6 +36,12 @@ function getColDef(id,definition){
 // }
 function schema2HotCols(schema){
   var columnDefs = [];
+  for (var prop in schema.properties){
+    // console.log ('prop', i, schema.properties.hasOwnProperty(i));
+    if (schema.properties.hasOwnProperty(prop))
+      columnDefs.push(getColDef(prop,schema.properties[prop]))
+  }
+  // console.log('properties',schema.properties,Object.getOwnPropertyNames(schema.properties));
   // TODO: translate schema into column definitions
   // "veggieName": {
   //   "type": "string",
@@ -54,46 +51,75 @@ function schema2HotCols(schema){
   //   "type": "boolean",
   //   "description": "Do I like this vegetable?"
   // }
-  Object.getOwnPropertyNames(schema.properties).forEach(
-    function (prop, idx, array) {
-      console.log(prop + ' -> ' + schema.properties[prop]);
-      columnDefs.push(getColDef(prop,schema.properties[prop]))
-    }
-  );
+  // Object.getOwnPropertyNames(schema.properties).forEach(
+  //   function (prop, idx, array) {
+  //     console.log(prop + ' -> ' + schema.properties[prop]);
+  //     columnDefs.push(getColDef(prop,schema.properties[prop]))
+  //   }
+  // );
   return columnDefs;
 }
 
 
 function schema2HotHeaders(schema){
-  return Object.getOwnPropertyNames(schema.properties);
+  var headers = [];
+  for (var prop in schema.properties){
+    if (schema.properties.hasOwnProperty(prop) && schema.properties[prop].title){
+      headers.push(schema.properties[prop].title);
+    }
+    else {
+      headers.push(prop);
+    }
+  }
+  // console.log('headers', headers);
+  return headers; // Object.getOwnPropertyNames(schema.properties);
 }
 
 
-function HotSchemaTable(el, schema, data) {
+function HotSchemaTable(el, schema, data, options) {
+  (function(Handsontable){
+    function fakeValidator(query, callback) {
+      //Always returns true.  Use this to make sure afterValidate fires.
+      callback(true);//callback(/* Pass `true` or `false` based on your logic */);
+    }
+
+    // Register an alias
+    Handsontable.validators.registerValidator('fake.validator', fakeValidator);
+
+  })(Handsontable);
   var self = this;
+  self.options = options ? options : {validateOnChange: false};
   self.el = el;
   self.ajv = new Ajv({allErrors: true}); // options can be passed, e.g. {allErrors: true}
   self.validate = self.ajv.compile(schema);
   self.updated = {};
-  self.errors = {};
-  self.validateTable = function(){
-      // getSourceDataAtRow
-      // validateRows
+  var errors = {};
+  var error_rows = [];
+  self.validateTable = function(all){
+      if (!self.table)
+        return;
+      console.log('validateTable')
       function assignError(row,column,message){
-        if (!self.errors[row][column])
-          self.errors[row][column] = [];
-        self.errors[row][column].push(message);
+        if (!errors[row][column])
+          errors[row][column] = [];
+        errors[row][column].push(message);
       }
-      Object.getOwnPropertyNames(self.updated).forEach(
-        function (row) {
-          delete self.errors[row];
-          console.log(self.updated[row]);
-          // console.log(prop + ' -> ' + schema.properties[prop]);
-          // columnDefs.push(getColDef(prop,schema.properties[prop]))
+      if (all){
+        errors = {};
+        error_rows = [];
+      }
+
+      var rows = all ? Array.from(Array(self.table.countSourceRows()).keys()) : self.updated ;
+      console.log('validateRows',rows)
+      for (var row in rows){
+        if (rows.hasOwnProperty(row)) {
+          delete errors[row];
           var rowData = self.table.getSourceDataAtRow(row);
+          console.log('row data',rowData)
           var valid = self.validate(rowData);
           if (!valid){
-              self.errors[row] = {};// = self.validate.errors;
+              errors[row] = {};// = self.validate.errors;
+              error_rows.push(row);
               self.validate.errors.forEach(function(error){
                 if (error.params && error.params.missingProperty)
                   assignError(row,"."+error.params.missingProperty,'This field is required')
@@ -101,23 +127,44 @@ function HotSchemaTable(el, schema, data) {
                   assignError(row,error.dataPath,error.message)
               });
           }
-          else
-            delete self.errors[row];
-            //self.commentsPlugin.setCommentAtCell(row, this.propToCol(prop), message);
-            //self.commentsPlugin.removeCommentAtCell(row, this.propToCol(prop), message);
+          else{
+            var index = error_rows.indexOf(row);
+            if (index > -1)
+              error_rows.splice(index,1);
+          }
         }
-      );
-      console.log('errors',self.errors);
+      }
+      console.log('errors',errors);
+      console.log('error rows',error_rows);
       if (self.table)
-        self.table.validateCells();//self.table.validateRows(Object.getOwnPropertyNames(self.errors))
+        self.table.validateCells();//self.table.validateRows(Object.getOwnPropertyNames(errors))
+  };
+  self.hasErrors = function(){
+    console.log('hasErrors',error_rows)
+    return error_rows.length > 0;
   };
   self.addRow = function(){
     self.table.alter('insert_row');
   };
+  self.removeRows = function(){
+    var selection = self.table.getSelected();
+    var remove = selection.map(function(s){
+        return [s[0], (s[2]-s[0])+1];
+    });
+    console.log('remove',remove);
+    self.table.alter('remove_row', remove) ;
+
+  };
+
   self.logData = function(){
     var data = self.table.getSourceData();
-    console.log(data);
-  }
+    // console.log(data);
+  };
+  var columnDefs = schema2HotCols(schema);
+  var colTypes = {};
+  columnDefs.forEach(function(t){
+    colTypes[t.data]=t.type;
+  });
   self.table = new Handsontable(el, {
     data: data ? data : [{}],
     columns: schema2HotCols(schema),
@@ -126,52 +173,56 @@ function HotSchemaTable(el, schema, data) {
     colHeaders: schema2HotHeaders(schema),
     contextMenu: ['copy', 'cut'],
     manualColumnResize: true,
+    outsideClickDeselects: false,
     afterChange: function( changes, source ) {
-      console.log(changes)
+      if (!self.options.validateOnChange)
+        return;
+      // console.log(changes)
       for (var i in changes){
         if(!self.updated[changes[i][0]])
           self.updated[changes[i][0]] = {};
         self.updated[changes[i][0]][changes[i][1]]=changes[i][3]
 
       }
-      console.log('updated',self.updated);
-      self.validateTable();
+      // console.log('updated',self.updated);
+      self.validateTable(true);
+    },
+    beforeChange: (changes, source) => {
+      //BEGIN JENKY FIXES FOR HOT VALUE ISSUES
+      changes.forEach(function(change){
+        var val = change[3];  // The new value
+        switch(colTypes[change[1]]){
+          case 'checkbox':
+            if (val == 'true' || val == true)
+              val = true
+            else
+              val = false
+            break;
+          case 'text':
+          case 'numeric':
+            if (val === '')
+              val = undefined
+        }
+        change[3] = val;
+      });
+      //changes[0][3] = 10;
     },
     afterValidate: function(isValid, value, row, prop, source) {
   	//This is necessary because it passes in some context, unlike the custom validators which only give the value.
-      console.log(value,row,prop)
+      // console.log(value,row,prop)
       var col = this.propToCol(prop);
       var path = '.'+prop;
-      if (self.errors[row] && self.errors[row][path]){
-        console.log('error',row,path);
-        self.commentsPlugin.setCommentAtCell(row, col, self.errors[row][path].join(', '));
+      if (errors[row] && errors[row][path]){
+        // console.log('error',row,path);
+        self.commentsPlugin.setCommentAtCell(row, col, errors[row][path].join(', '));
         return false;
       }else
         self.commentsPlugin.removeCommentAtCell(row, col);
       return isValid;
 
-
-      //
-      // if (self.errors[row]){
-      //   valid = true;
-      //   for(var i in self.validate.errors){
-      //     if (self.validate.errors[i].dataPath == '.'+prop){
-      //       valid = false;
-      //       message = self.validate.errors[i].message;
-      //     }
-      //
-      //   }
-      //   if (!valid){
-      //     console.log(JSON.stringify(self.validate.errors));
-      //     console.log('Invalid: ' + self.ajv.errorsText(self.validate.errors));
-      //     self.commentsPlugin.setCommentAtCell(row, this.propToCol(prop), message);
-      //   }
-      //   else {
-      //     self.commentsPlugin.removeCommentAtCell(row, this.propToCol(prop), message);
-      //   }
-      // }
-      // return valid && isValid;
     }
   });
   self.commentsPlugin = self.table.getPlugin('comments');
 }
+
+export default HotSchemaTable;

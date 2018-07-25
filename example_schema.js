@@ -66,3 +66,5 @@ example_schemas.veggie = {
     }
   }
 }
+
+export {example_schemas};
