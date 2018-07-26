@@ -64,14 +64,16 @@ function schema2HotCols(schema){
 function schema2HotHeaders(schema){
   var headers = [];
   for (var prop in schema.properties){
+    var header = prop;
     if (schema.properties.hasOwnProperty(prop) && schema.properties[prop].title){
-      headers.push(schema.properties[prop].title);
+      header = schema.properties[prop].title;
     }
-    else {
-      headers.push(prop);
+    if (schema.properties.hasOwnProperty(prop) && schema.properties[prop].description){
+      header = '<div title="'+schema.properties[prop].description+'">'+header+'</div>'
     }
+    headers.push(header);
+    console.log('headers', headers);
   }
-  // console.log('headers', headers);
   return headers; // Object.getOwnPropertyNames(schema.properties);
 }
 
